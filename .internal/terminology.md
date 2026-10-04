@@ -10,7 +10,7 @@
 | TPOT (time per output token) | The wall-clock time in seconds per generated output token, measured per request by slam-eval. |
 | VRAM | GPU memory usage of the deployment, sampled by slam-eval during the evaluation run. |
 | Solution deployment | The vLLM deployment of the model produced by the solution implementation being validated (with `solution_overrides` applied). |
-| Baseline deployment | The vLLM deployment of the original model precision with no extra-options, launched through the same solution invocation path as the solution deployment. It serves as the reference for VM6. |
+| Baseline deployment | The deployment run from the profile's baseline reference (a `(repo, commit)` pair of the solution), serving as the quality reference for VM6. It is launched through the same solution invocation path as the solution deployment. |
 | Validation metric (VM) | A quantity computed by the validation service for a given implementation and used in acceptance criteria: VM1 median TTFT, VM2 q90 TTFT, VM3 median TPOT, VM4 q90 TPOT, VM5 peak VRAM, VM6 accuracy loss. |
 | Acceptance criterion (AC) | A condition over one or more validation metrics (e.g. `VM1 < AC1.threshold`) whose evaluation yields a status: accepted, valid or invalid. AC1-AC6 are defined in section 3 of the validation spec. |
 | Validation profile | A named, complete validation configuration stored as `config/profiles/<name>.yaml`: the subset of acceptance criteria in scope, per-criterion threshold overrides and the definition of full and partial validation for the profile. The validation spec (section 4) is the source of truth for profiles. |
@@ -24,10 +24,13 @@
 
 | Term | Definition |
 |------|------------|
-| Validation engine | The orchestrator shared by all entry points: resolves the profile and scope, drives the solution runner and the slam-eval adapter, passes measured metric values to the metrics evaluator and delegates response assembly to the response builder. |
+| Validation engine | The orchestrator shared by all entry points: resolves the profile and scope, runs the strictly sequential pipeline (solution deployment, solution evaluation, baseline deployment and evaluation on cache miss, criteria evaluation), drives the solution runner and the slam-eval adapter, passes measured metric values to the metrics evaluator and delegates response assembly to the response builder. |
 | Profile loader | Loads `config/profiles/<name>.yaml`, checks it against the validation spec and exposes the resolved configuration to the validation engine. |
-| Solution runner | Clones the solution repository, checks out the commit, applies `solution_overrides` and invokes the solution's scripts; also launches the baseline deployment. |
-| slam-eval adapter | The only component interacting with slam-eval: configures and runs the measurement and maps slam-eval output artifacts to raw VM1-VM6 values (computing VM6 as the difference of the solution and baseline deployment quality scores). |
+| Solution runner | Creates a temporary Python venv, clones the solution repository, checks out the commit, derives the model-hardware pair slug, runs the pair's environment setup script (when it exists) and invokes the solution's scripts with the `port` solution option; polls `GET /health` until readiness. Runs the baseline deployment (the profile's `(repo, commit)` baseline reference) through the same procedure; deployments run strictly sequentially and the venvs and processes are destroyed at the end of the run. |
+| slam-eval adapter | The only component interacting with slam-eval: configures and runs the measurement in the validation service's own environment and maps slam-eval output artifacts to raw VM1-VM6 values (computing VM6 as the difference of the solution and baseline deployment quality scores). |
+| Baseline cache | Caches baseline evaluation results keyed by the `(repo, commit)` baseline reference, the model-hardware pair and the validation scope; a cache hit skips the baseline deployment and evaluation. |
+| Baseline reference | The `(repo, commit)` pair stored in a validation profile that defines the baseline deployment for VM6. |
+| Pair slug | The identifier of a model-hardware pair derived by joining the identifiers with an underscore, lowercasing, and replacing every remaining non-alphanumeric character with an underscore (e.g. `qwen_qwen3_0_6b_huawei_cpu`). |
 | Metrics evaluator | Computes `computation_status`, `acceptance_status` and the criterion status for every acceptance criterion in scope, from measured metric values and profile-resolved thresholds. |
 | Response builder | Assembles the response JSON defined in section 5.1; for CLI runs, writes it to `output_json`. |
 | CLI entry points | `validation_cli.py` (full validation) and `validation_cli_partial.py` (partial validation) with the interface defined in section 5.1. |
