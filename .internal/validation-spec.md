@@ -52,7 +52,7 @@
 |---------|---------------------|--------------|---------------------|
 | default | `llm-deployment` | AC1, AC2, AC3, AC4, AC6 | |
 
-Profiles are stored as config files `config/profiles/<name>.yaml` in the validation service implementation. The validation spec is the source of truth: the config files must mirror this section, and every profile change is a revision of the validation spec.
+Profiles are stored as config files `config/profile/<name>.yaml` in the validation service implementation. The validation spec is the source of truth: the config files must mirror this section, and every profile change is a revision of the validation spec.
 
 ### 5. Overall validation service design
 
@@ -70,7 +70,7 @@ flowchart TD
 
     engine["engine.py: ValidationEngine"]
     loader["profile_loader.py: ProfileLoader"]
-    profiles["config/profiles/default.yaml"]
+    profiles["config/profile/default.yaml"]
 
     subgraph pipeline["run components"]
         runner["solution_runner.py: SolutionRunner"]
@@ -146,7 +146,7 @@ The validation engine enforces a strictly sequential run — solution deployment
 The validation service consists of the following core components:
 
 1. **Validation engine.** The orchestrator shared by all the three entry points. For a given request (`repo`, `commit`, `solution_overrides`) it resolves the active validation profile and validation scope, drives the solution runner and the slam-eval adapter, passes the measured metric values to the metrics evaluator and delegates response assembly to the response builder.
-2. **Profile loader.** Loads `config/profiles/<name>.yaml` and checks that the profile is well-formed with respect to this spec: it references only the acceptance criteria defined in section 3, every acceptance criterion in scope has a numeric threshold override or the default threshold from section 3 applies, and the profile specifies what full and partial validation mean for it (as required by section 5.1). A malformed profile is an immediate validation error. On success, the loader exposes the resolved configuration to the validation engine.
+2. **Profile loader.** Loads `config/profile/<name>.yaml` and checks that the profile is well-formed with respect to this spec: it references only the acceptance criteria defined in section 3, every acceptance criterion in scope has a numeric threshold override or the default threshold from section 3 applies, and the profile specifies what full and partial validation mean for it (as required by section 5.1). A malformed profile is an immediate validation error. On success, the loader exposes the resolved configuration to the validation engine.
 3. **Solution runner.** Creates a temporary Python venv, clones the solution repository, checks out the specified commit, derives the model-hardware pair slug, runs the pair's environment setup script (when it exists) and invokes the solution's scripts as defined by the solution invocation contract in the `llm-deployment` constitution spec (sections 3.2 and 3.3), passing the `port` solution option; it polls `GET /health` until readiness. It runs the baseline deployment (defined by the profile's `(repo, commit)` baseline reference) through the same procedure; deployments are run strictly sequentially, and the temporary venvs and deployment processes are destroyed when the validation run finishes.
 4. **slam-eval adapter.** The only component interacting with slam-eval: it configures and runs the measurement in the validation service's own environment for the active profile and validation scope against the deployment produced by the solution runner and returns the raw values of VM1-VM6. For VM6, slam-eval produces the quality scores of the solution and baseline deployment evaluation runs, and the adapter computes the accuracy loss as the difference of these scores.
 5. **Baseline cache.** Caches the baseline evaluation results keyed by the `(repo, commit)` baseline reference, the model-hardware pair and the validation scope, so that repeated validation runs skip the baseline deployment and evaluation on a cache hit.

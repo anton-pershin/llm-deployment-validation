@@ -2,9 +2,9 @@
 
 ### 1. Requirement analysis
 
-**R1.** The validation service must be a hydra repo (see the hydra-repo conventions) in this repo implementing the validation spec (section 5): `llm_deployment_validation/scripts/` provides the executable scripts `validation_cli.py` (full validation), `validation_cli_partial.py` (partial validation) and `validation_service.py` (HTTP service with `/validate` and `/validate_partial`), configured via hydra configs in `config/` (including `config/profiles/` for validation profiles), with `llm_deployment_validation/utils/`, `tests/`, `pyproject.toml`, `requirements.txt`, `requirements_dev.txt`, `run_linters.sh` and `README.md` following the same shape as slam-eval. The components (validation engine, profile loader, solution runner, slam-eval adapter, baseline cache, metrics evaluator, response builder) live in `llm_deployment_validation/` and share the interfaces and response JSON defined in validation spec section 5.1.
+**R1.** The validation service must be a hydra repo (see the hydra-repo conventions) in this repo implementing the validation spec (section 5): `llm_deployment_validation/scripts/` provides the executable scripts `validation_cli.py` (full validation), `validation_cli_partial.py` (partial validation) and `validation_service.py` (HTTP service with `/validate` and `/validate_partial`), configured via hydra configs in `config/` (including `config/profile/` for validation profiles), with `llm_deployment_validation/utils/`, `tests/`, `pyproject.toml`, `requirements.txt`, `requirements_dev.txt`, `run_linters.sh` and `README.md` following the same shape as slam-eval. The components (validation engine, profile loader, solution runner, slam-eval adapter, baseline cache, metrics evaluator, response builder) live in `llm_deployment_validation/` and share the interfaces and response JSON defined in validation spec section 5.1.
 
-**R2.** The `default` profile (`config/profiles/default.yaml`) must be the only profile: acceptance criteria AC1, AC2, AC3, AC4 and AC6 in scope with no threshold overrides (the validation spec section 3 defaults apply; AC5 is out of scope in this profile — there is no GPU on this machine, so peak VRAM is not measurable); full validation runs the `merge_quality__merge_quality_easy` collection (100 cases, dataset present at `${dataset_root}/merge_quality/`), partial validation runs the `merge_quality__merge_quality_easy_tiny` collection (3 cases); the validated model-hardware pair of this spec is `Qwen/Qwen3-0.6B` on `huawei-cpu` (this machine).
+**R2.** The `default` profile (`config/profile/default.yaml`) must be the only profile: acceptance criteria AC1, AC2, AC3, AC4 and AC6 in scope with no threshold overrides (the validation spec section 3 defaults apply; AC5 is out of scope in this profile — there is no GPU on this machine, so peak VRAM is not measurable); full validation runs the `merge_quality__merge_quality_easy` collection (100 cases, dataset present at `${dataset_root}/merge_quality/`), partial validation runs the `merge_quality__merge_quality_easy_tiny` collection (3 cases); the validated model-hardware pair of this spec is `Qwen/Qwen3-0.6B` on `huawei-cpu` (this machine).
 
 **R3.** For a validation run, the solution runner must create a temporary Python venv, clone the requested `llm-deployment` repo and check out the requested commit, derive the pair slug from the requested model and hardware identifiers per the pair-slug rule of the solution constitution spec (section 4.3: identifiers joined with an underscore, lowercased, every remaining non-alphanumeric character replaced by an underscore — e.g. `qwen_qwen3_0_6b_huawei_cpu`), run the pair's environment setup script `config/deployment_configurations/<pair slug>.sh` (when it exists, per the solution invocation contract, constitution spec section 3.2) with the temporary venv active, then invoke `python deploy.py model=<model identifier> hardware=<hardware identifier> port=<port> [<solution_overrides>]` in the temporary venv, where `port` is a configurable solution option (overridable via `solution_overrides`) telling the deployment which port to serve on. The solution runner polls `GET /health` on this port until HTTP 200 per the deployment server contract (constitution spec 3.3) and optionally verifies the model via `GET /v1/models`. Deployments are run strictly sequentially (one deployment at a time: first the solution deployment, then the baseline), never in parallel, because an LLM deployment exhausts the machine resources. The temporary venvs and deployment processes are destroyed when the validation run finishes.
 
@@ -24,7 +24,7 @@
 
 ### 2. Tests
 
-**T1** (R2). Assert `config/profiles/default.yaml` exists, its acceptance criteria subset is exactly AC1, AC2, AC3, AC4, AC6 with no threshold overrides, its full validation setting references `merge_quality__merge_quality_easy` and its partial validation setting references `merge_quality__merge_quality_easy_tiny`, and its baseline definition contains a `(repo, commit)` reference for the pair `Qwen/Qwen3-0.6B` + `huawei-cpu`. Automated (config validation, no deployments).
+**T1** (R2). Assert `config/profile/default.yaml` exists, its acceptance criteria subset is exactly AC1, AC2, AC3, AC4, AC6 with no threshold overrides, its full validation setting references `merge_quality__merge_quality_easy` and its partial validation setting references `merge_quality__merge_quality_easy_tiny`, and its baseline definition contains a `(repo, commit)` reference for the pair `Qwen/Qwen3-0.6B` + `huawei-cpu`. Automated (config validation, no deployments).
 
 **T2** (R6). Feed the metrics evaluator synthetic metric values (with the profile resolved through the profile loader) and assert: statuses accepted / valid / invalid are produced per the validation spec 5.1 rules; out-of-scope criteria (AC5) never appear in the response; thresholds come from the profile. Automated.
 
@@ -64,7 +64,7 @@ flowchart TD
 
     engine["engine.py: ValidationEngine"]
     loader["profile_loader.py: ProfileLoader"]
-    profiles["config/profiles/default.yaml"]
+    profiles["config/profile/default.yaml"]
 
     subgraph pipeline["run components"]
         runner["solution_runner.py: SolutionRunner"]
@@ -105,7 +105,7 @@ Key decisions:
 1. [ ] Write the automated tests (T1-T8) in `tests/`
 2. [ ] Run all the tests and ensure that they fail
 3. [ ] Scaffold the hydra repo: `pyproject.toml`, `requirements.txt`, `requirements_dev.txt`, `run_linters.sh`, `README.md`, package skeleton `llm_deployment_validation/`
-4. [ ] Implement the profile loader and `config/profiles/default.yaml` (T1)
+4. [ ] Implement the profile loader and `config/profile/default.yaml` (T1)
 5. [ ] Implement the metrics evaluator and response builder (T2)
 6. [ ] Implement the validation engine and the three entry-point scripts (T3, T4, T8)
 7. [ ] Implement the solution runner (T5)
@@ -137,7 +137,7 @@ Key decisions:
 | `llm_deployment_validation/utils/__init__.py` | New: package marker |
 | `llm_deployment_validation/utils/common.py` | New: shared helpers (paths, venv tools) |
 | `config/config_main.yaml` | New: hydra main config |
-| `config/profiles/default.yaml` | New: the `default` validation profile |
+| `config/profile/default.yaml` | New: the `default` validation profile |
 | `config/hydra/base.yaml` | New: hydra run-dir setup (following slam-eval) |
 | `config/hydra/job_logging/base.yaml` | New: logging config (following slam-eval) |
 | `config/user_settings/user_settings.yaml` | New: user-specific settings (venv paths, slam-eval location, cache dir; sourced from environment variables) |

@@ -1,0 +1,13 @@
+# User-specific settings, sourced from environment variables. Do not commit
+# real credentials or machine-specific absolute paths that must stay private.
+hydra_root: ${oc.env:VALIDATION_HYDRA_ROOT,/tmp/llm_deployment_validation/hydra}
+slam_eval_root: ${oc.env:SLAM_EVAL_ROOT,/home/tony/reps/github/anton-pershin/slam-eval}
+# empty means: use the validation service's own python interpreter
+slam_eval_python: ${oc.env:SLAM_EVAL_PYTHON,""}
+slam_core_root: ${oc.env:SLAM_CORE_ROOT,/home/tony/reps/github/anton-pershin/slam-core}
+slam_shared_config_path: ${oc.env:SLAM_SHARED_CONFIG_PATH,/home/tony/reps/github/anton-pershin/slam-core/config}
+dataset_root: ${oc.env:SLAM_CORE_DATASET_PATH,/home/tony/datasets}
+result_root: ${oc.env:VALIDATION_RESULT_ROOT,/tmp/llm_deployment_validation}
+cache_dir: ${oc.env:VALIDATION_CACHE_DIR,/home/tony/.cache/llm_deployment_validation}
+health_check_timeout_s: 900
+health_check_interval_s: 2.0

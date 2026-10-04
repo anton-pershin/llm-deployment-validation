@@ -1,0 +1,15 @@
+# Configuration for the validation CLI entry points (validation spec 5.1).
+# repo / commit / output_json / solution_overrides are overridden from the
+# command line on every run (repo=... commit=... output_json=...).
+defaults:
+  - _self_
+  - user_settings: user_settings
+  - hydra: base
+  - profile: default
+
+hydra_dir: ${user_settings.hydra_root}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+repo: null
+commit: null
+output_json: null
+solution_overrides: ""

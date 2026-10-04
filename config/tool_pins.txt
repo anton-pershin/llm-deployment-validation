@@ -1,0 +1,11 @@
+# Pinned measurement stack (slam-core / slam-eval) installed into the
+# validation service's environment. These are regular (non-editable) installs
+# built from the slam repos at the commits below; re-pin explicitly when the
+# measurement stack changes (a validation-spec-level decision).
+#
+# slam-core: 1688aef893e1736cefe33d58960536deef83f7e1
+# slam-eval: b835060ead971368833b8ccfff8e7d476a54d82a
+#
+# Install command (from a repo checkout at the pinned commit):
+#   pip install --force-reinstall --no-deps <path to slam-core checkout>
+#   pip install --force-reinstall --no-deps <path to slam-eval checkout>

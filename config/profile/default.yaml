@@ -1,0 +1,19 @@
+_target_: llm_deployment_validation.profile_loader.ValidationProfile
+name: default
+solution_subproject: llm-deployment
+acceptance_criteria:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC6
+threshold_overrides: {}
+full_validation:
+  collection: merge_quality__merge_quality_easy
+partial_validation:
+  collection: merge_quality__merge_quality_easy_tiny
+model: Qwen/Qwen3-0.6B
+hardware: huawei-cpu
+baseline:
+  repo: https://github.com/anton-pershin/llm-deployment.git
+  commit: 9090ac007085bd19665d7336f1976ad72330ffbe

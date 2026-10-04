@@ -1,0 +1,9 @@
+hydra-core>=1.3
+setuptools
+pytest
+requests
+PyYAML
+black
+isort
+pylint
+mypy

@@ -1,0 +1,10 @@
+# Configuration for the HTTP validation service (validation spec 5.1).
+defaults:
+  - _self_
+  - user_settings: user_settings
+  - hydra: base
+  - profile: default
+
+hydra_dir: ${user_settings.hydra_root}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+port: 8456
