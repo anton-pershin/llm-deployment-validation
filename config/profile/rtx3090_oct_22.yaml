@@ -17,4 +17,4 @@ model: Qwen/Qwen3-8B
 hardware: rtx3090-oct-22
 baseline:
   repo: https://github.com/anton-pershin/llm-deployment.git
-  commit: 26f166a43ae9557c4ffb606eed186b9bef7cefa3
+  commit: 54d9f3e
