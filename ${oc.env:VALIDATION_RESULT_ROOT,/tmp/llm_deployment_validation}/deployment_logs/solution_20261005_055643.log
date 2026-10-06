@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/tmp/validation_run_nm270lkl/solution_env/repo/deploy.py", line 11, in <module>
-    import yaml
-ModuleNotFoundError: No module named 'yaml'
