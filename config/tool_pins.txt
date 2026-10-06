@@ -9,3 +9,8 @@
 # Install command (from a repo checkout at the pinned commit):
 #   pip install --force-reinstall --no-deps <path to slam-core checkout>
 #   pip install --force-reinstall --no-deps <path to slam-eval checkout>
+#
+# VRAM sampling additionally needs the NVML python binding (nvidia-ml-py, which
+# provides the `pynvml` module): slam-eval imports it but does not declare it as
+# a dependency, and without it the memory sampler warns and records null VRAM
+# samples, so VM5 (peak VRAM) resolves to failed_to_compute.

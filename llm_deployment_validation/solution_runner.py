@@ -65,6 +65,31 @@ class DeploymentHandle:
         LOGGER.info("stage 'deployment stop': venv %s removed", self.venv_dir)
 
 
+def deployment_process_pids(handle: DeploymentHandle) -> list[int]:
+    """Return the PIDs of the deployment's process group (memory sampling targets).
+
+    The deployment is started in its own session (``start_new_session=True``),
+    so its process group id equals the deployment process pid and every process
+    it spawns belongs to that group. The GPU memory holders are among those
+    children (``deploy.py`` only runs the vLLM server as a subprocess), so
+    sampling the ``deploy.py`` pid alone would measure nothing.
+    """
+    pgid = handle.process.pid
+    pids: list[int] = []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat = (entry / "stat").read_text()
+            # Fields after the (comm) field: state, ppid, pgrp, ...
+            fields = stat[stat.rindex(")") + 2 :].split()
+            if int(fields[2]) == pgid:
+                pids.append(int(entry.name))
+        except (OSError, ValueError, IndexError):  # pragma: no cover - process races
+            continue
+    return sorted(pids)
+
+
 def _allocate_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))

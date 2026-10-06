@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -82,3 +83,72 @@ def test_quality_score(adapter, run_dir) -> None:
 def test_missing_aggregated_raises(adapter, tmp_path) -> None:
     with pytest.raises(FileNotFoundError):
         adapter.extract_metrics(tmp_path / "results" / "nope")
+
+
+def test_extract_metrics_prefers_newest_artifact(adapter, tmp_path) -> None:
+    """A reused result dir holds earlier runs' artifacts; only the newest counts."""
+    run = tmp_path / "results" / "run_stale"
+    run.mkdir(parents=True)
+    stale = run / "performance_stale"
+    current = run / "performance_current"
+    for directory, peak in ((stale, 1 * 2**30), (current, 4 * 2**30)):
+        directory.mkdir()
+        (directory / "aggregated.json").write_text(
+            json.dumps(
+                {
+                    "ttft_s": {"median": 0.5, "q95": 1.2},
+                    "tpot_s": {"median": 0.02, "q95": 0.08},
+                    "vram_bytes": {"max": peak},
+                }
+            )
+        )
+    # "performance_stale" sorts first lexicographically, but is the older run
+    os.utime(stale / "aggregated.json", (1_000_000, 1_000_000))
+    os.utime(current / "aggregated.json", (2_000_000, 2_000_000))
+
+    metrics = adapter.extract_metrics(run)
+
+    assert metrics["VM1"]["computed_value"] == pytest.approx(0.5)
+    assert metrics["VM5"]["computed_value"] == pytest.approx(4.0)
+
+
+def _capture_eval_command(monkeypatch) -> dict:
+    """Patch the adapter's subprocess call and return the captured command."""
+    captured: dict = {}
+
+    class _Completed:
+        returncode = 0
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        captured["cmd"] = cmd
+        return _Completed()
+
+    monkeypatch.setattr("llm_deployment_validation.slam_eval_adapter.subprocess.run", fake_run)
+    return captured
+
+
+def test_run_evaluation_passes_memory_sampling_pids(adapter, monkeypatch) -> None:
+    """The deployment's pids become slam-eval memory sampling targets (VM5 source)."""
+    captured = _capture_eval_command(monkeypatch)
+    adapter.run_evaluation(
+        base_url="http://127.0.0.1:1234",
+        collection="merge_quality__merge_quality_easy_tiny",
+        run_name="run_pids",
+        gpu_pids=[101, 202],
+        ram_pids=[202],
+    )
+    overrides = [arg for arg in captured["cmd"] if arg.startswith("performance_monitor")]
+    assert "performance_monitor=enabled" in overrides
+    assert "performance_monitor.gpu_pids=[101,202]" in overrides
+    assert "performance_monitor.ram_pids=[202]" in overrides
+
+
+def test_run_evaluation_without_pids_omits_sampling_overrides(adapter, monkeypatch) -> None:
+    captured = _capture_eval_command(monkeypatch)
+    adapter.run_evaluation(
+        base_url="http://127.0.0.1:1234",
+        collection="merge_quality__merge_quality_easy_tiny",
+        run_name="run_no_pids",
+    )
+    overrides = [arg for arg in captured["cmd"] if arg.startswith("performance_monitor")]
+    assert overrides == ["performance_monitor=enabled"]

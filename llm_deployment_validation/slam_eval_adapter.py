@@ -59,6 +59,8 @@ class SlamEvalAdapter:
         run_name: str,
         max_concurrent_requests: int = 8,
         max_output_tokens: int = 512,
+        gpu_pids: list[int] | None = None,
+        ram_pids: list[int] | None = None,
     ) -> Path:
         """Run one slam-eval evaluation against the deployment; return the result dir."""
         hydra_dir = self.result_root / run_name
@@ -81,8 +83,11 @@ class SlamEvalAdapter:
             "scorer=merge_quality",
             "storage_adapter=local_jsonl",
             # Performance monitoring produces the aggregated.json artifact with
-            # TTFT/TPOT statistics (VM1-VM4 source); on CPU-only hosts the VRAM
-            # samples stay empty and VM5 resolves to failed_to_compute.
+            # TTFT/TPOT statistics (VM1-VM4 source). Memory sampling needs the
+            # deployment's process group explicitly: in the local_llm scenario
+            # slam-eval builds no sampler at all when gpu_pids/ram_pids are
+            # unset and self_monitor is false, which leaves the vram_bytes
+            # statistics empty and VM5 (AC5) failed_to_compute.
             "performance_monitor=enabled",
             "storage_adapter.path_to_jsonl=" + str(hydra_dir / "predictions.jsonl"),
             "model=local_llm",
@@ -90,6 +95,14 @@ class SlamEvalAdapter:
             f"model.llm.max_concurrent_requests={max_concurrent_requests}",
             f"model.llm.max_output_tokens={max_output_tokens}",
         ]
+        if gpu_pids:
+            cmd.append(
+                "performance_monitor.gpu_pids=[" + ",".join(str(pid) for pid in gpu_pids) + "]"
+            )
+        if ram_pids:
+            cmd.append(
+                "performance_monitor.ram_pids=[" + ",".join(str(pid) for pid in ram_pids) + "]"
+            )
         LOGGER.info(
             "stage 'evaluation': running slam-eval (%s cases config: collection=%s) against %s; "
             "artifacts will be written to %s",
@@ -130,16 +143,20 @@ class SlamEvalAdapter:
         (computed by the caller across solution and baseline runs).
         """
         run_dir = Path(run_dir)
+        # A result dir is reused across validation runs of the same
+        # (pair, scope), so slam-eval's run-keyed performance_* dirs accumulate.
+        # Take the newest artifact: the oldest one belongs to an earlier run and
+        # would silently report that run's numbers.
         candidates = [run_dir / "aggregated.json"]
-        # performance storage writes into a run-keyed subdir: performance_<group>_<ts>/
-        candidates.extend(sorted(run_dir.glob("performance_*/aggregated.json")))
-        aggregated = next((c for c in candidates if c.is_file()), None)
-        if aggregated is None:
+        candidates.extend(run_dir.glob("performance_*/aggregated.json"))
+        existing = [c for c in candidates if c.is_file()]
+        if not existing:
             raise FileNotFoundError(
                 f"stage 'metric extraction' failed: aggregated artifact not found in "
                 f"{run_dir} (checked aggregated.json and performance_*/aggregated.json); "
                 f"check the slam-eval run artifacts in {run_dir}"
             )
+        aggregated = max(existing, key=lambda path: path.stat().st_mtime)
         data = json.loads(aggregated.read_text())
 
         ttft = data.get("ttft_s", {}) or {}

@@ -3,6 +3,9 @@ setuptools
 pytest
 requests
 PyYAML
+# NVML python binding: slam-eval's memory sampler imports pynvml but does not
+# declare it; without it VM5 (peak VRAM) can never be measured.
+nvidia-ml-py
 black
 isort
 pylint

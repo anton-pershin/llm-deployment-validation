@@ -16,7 +16,10 @@ from llm_deployment_validation.metrics_evaluator import evaluate_all
 from llm_deployment_validation.profile_loader import ValidationProfile
 from llm_deployment_validation.response_builder import build_response
 from llm_deployment_validation.slam_eval_adapter import SlamEvalAdapter
-from llm_deployment_validation.solution_runner import start_deployment
+from llm_deployment_validation.solution_runner import (
+    deployment_process_pids,
+    start_deployment,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,11 +117,19 @@ class ValidationEngine:
                 health_interval_s=self.health_interval_s,
             )
             LOGGER.info("=== stage 2/5: evaluate solution deployment ===")
-            # 2. evaluate solution
+            # 2. evaluate solution; sample the deployment's own process group so
+            # slam-eval can measure its VRAM/RSS (VM5)
+            solution_pids = deployment_process_pids(deployment)
+            LOGGER.info(
+                "stage 'evaluation': memory sampling targets (deployment process group): %s",
+                solution_pids,
+            )
             solution_run = self.adapter.run_evaluation(
                 base_url=f"http://127.0.0.1:{port}",
                 collection=collection,
                 run_name=f"solution_{validation_scope}",
+                gpu_pids=solution_pids,
+                ram_pids=solution_pids,
             )
             solution_score = self.adapter.quality_score(solution_run)
             solution_metrics = self.adapter.extract_metrics(solution_run)
@@ -174,11 +185,19 @@ class ValidationEngine:
                         health_interval_s=self.health_interval_s,
                     )
                     LOGGER.info("=== stage 4/5: evaluate baseline deployment ===")
+                    baseline_pids = deployment_process_pids(baseline_deployment)
+                    LOGGER.info(
+                        "stage 'evaluation': memory sampling targets (baseline deployment "
+                        "process group): %s",
+                        baseline_pids,
+                    )
                     try:
                         baseline_run = self.adapter.run_evaluation(
                             base_url=f"http://127.0.0.1:{baseline_port}",
                             collection=collection,
                             run_name=f"baseline_{validation_scope}",
+                            gpu_pids=baseline_pids,
+                            ram_pids=baseline_pids,
                         )
                         baseline_score = self.adapter.quality_score(baseline_run)
                         baseline_scores = {"score": baseline_score}

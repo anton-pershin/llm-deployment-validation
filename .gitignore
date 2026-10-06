@@ -10,6 +10,10 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .venv/
-hydra/
+
+# hydra run output (VALIDATION_HYDRA_ROOT can point at a repo-relative dir named
+# "hydra"); scoped to the repo root so the config subtree config/hydra/ — the
+# run-dir and job-logging configs — is not swallowed by the ignore
+/hydra/
 
 outputs/
