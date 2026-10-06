@@ -122,7 +122,7 @@ class ValidationEngine:
             )
             solution_score = self.adapter.quality_score(solution_run)
             solution_metrics = self.adapter.extract_metrics(solution_run)
-            for metric in ("VM1", "VM2", "VM3", "VM4"):
+            for metric in ("VM1", "VM2", "VM3", "VM4", "VM5"):
                 if metric in solution_metrics:
                     metric_values[metric] = solution_metrics[metric]
         except Exception as exc:  # noqa: BLE001 - any failure -> failed_to_compute
