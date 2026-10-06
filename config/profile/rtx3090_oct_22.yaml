@@ -13,7 +13,7 @@ full_validation:
   collection: merge_quality__merge_quality_easy
 partial_validation:
   collection: merge_quality__merge_quality_easy_tiny
-model: Qwen/Qwen3-0.6B
+model: Qwen/Qwen3-8B
 hardware: rtx3090-oct-22
 baseline:
   repo: https://github.com/anton-pershin/llm-deployment.git
