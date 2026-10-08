@@ -3,8 +3,10 @@
 # built from the slam repos at the commits below; re-pin explicitly when the
 # measurement stack changes (a validation-spec-level decision).
 #
-# slam-core: 1688aef893e1736cefe33d58960536deef83f7e1
-# slam-eval: b835060ead971368833b8ccfff8e7d476a54d82a
+# slam-core: f544aa8239a2795f88cf49978a3a1084de701f35
+# slam-eval: 7275f00199a7f5a17763c6a2908906243e138886
+#
+# rally: 9da6f6027a37f9689df0b96bb6837616dfe90045
 #
 # Install command (from a repo checkout at the pinned commit):
 #   pip install --force-reinstall --no-deps <path to slam-core checkout>

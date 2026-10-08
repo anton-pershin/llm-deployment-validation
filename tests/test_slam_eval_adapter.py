@@ -152,3 +152,18 @@ def test_run_evaluation_without_pids_omits_sampling_overrides(adapter, monkeypat
     )
     overrides = [arg for arg in captured["cmd"] if arg.startswith("performance_monitor")]
     assert overrides == ["performance_monitor=enabled"]
+
+
+def test_run_evaluation_disables_thinking_per_run(adapter, monkeypatch) -> None:
+    """A reasoning deployment must not answer with its chain of thought.
+
+    The setting is passed per run and never baked into slam-core's shared model
+    config, so no global default changes and pinned checkouts stay pristine.
+    """
+    captured = _capture_eval_command(monkeypatch)
+    adapter.run_evaluation(
+        base_url="http://127.0.0.1:1234",
+        collection="merge_quality__merge_quality_easy_tiny",
+        run_name="run_no_thinking",
+    )
+    assert "model.llm.enable_thinking=false" in captured["cmd"]

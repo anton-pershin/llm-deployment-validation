@@ -94,6 +94,11 @@ class SlamEvalAdapter:
             f"model.llm.url={base_url}/v1/chat/completions",
             f"model.llm.max_concurrent_requests={max_concurrent_requests}",
             f"model.llm.max_output_tokens={max_output_tokens}",
+            # Reasoning deployments (e.g. Qwen3) otherwise answer with their
+            # chain of thought and the collection's scorer never sees the bare
+            # answer. Pinned here per run rather than relied on from slam-core's
+            # shared model config, so the measured configuration is explicit.
+            "model.llm.enable_thinking=false",
         ]
         if gpu_pids:
             cmd.append(
