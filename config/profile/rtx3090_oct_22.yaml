@@ -8,7 +8,13 @@ acceptance_criteria:
   - AC4
   - AC5
   - AC6
-threshold_overrides: {}
+threshold_overrides: 
+  AC1: 0.5
+  AC2: 1.0
+  AC3: 0.01
+  AC4: 0.05
+  AC5: 16
+  AC6: 1
 full_validation:
   collection: merge_quality__merge_quality_easy
 partial_validation:
